@@ -1,0 +1,637 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Shadowbat Arcade</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#090914;color:white;font-family:Arial;text-align:center}
+h1{color:#bd83ff;text-shadow:0 0 15px #9333ea}
+nav{background:#19192c;padding:12px}
+button{background:#9333ea;color:white;border:0;border-radius:9px;padding:12px 17px;margin:6px;font-weight:bold;cursor:pointer}
+button:hover{background:#b66aff}
+.screen{display:none;padding:20px 10px;min-height:450px}
+#homeScreen{display:block}
+.card{background:#19192c;border:2px solid #393052;border-radius:15px;max-width:500px;margin:15px auto;padding:20px}
+.gameCard{display:inline-block;vertical-align:top;background:#19192c;border:2px solid #63458a;border-radius:14px;width:210px;max-width:44%;margin:9px;padding:15px}
+.gameIcon{font-size:48px}
+canvas{background:#101027;border:3px solid #a855f7;max-width:98%;touch-action:none}
+.small{color:#aaa;font-size:13px}
+#gameMessage{min-height:25px;color:#f0abfc}
+</style>
+</head>
+<body>
+
+<h1>SHADOWBAT ARCADE</h1>
+
+<nav>
+<button onclick="home()">HOME</button>
+<button onclick="library()">GAMES</button>
+<button onclick="about()">ABOUT</button>
+</nav>
+
+<div id="homeScreen" class="screen">
+ <div class="card">
+  <h2>WELCOME TO SHADOWBAT ARCADE</h2>
+  <p>Five games. Five different challenges.</p>
+  <button onclick="library()">ENTER ARCADE</button>
+ </div>
+</div>
+
+<div id="libraryScreen" class="screen">
+ <h2>GAME LIBRARY</h2>
+ <p>Choose a game to play.</p>
+
+ <div class="gameCard">
+  <div class="gameIcon">🟪</div>
+  <h3>Shadowbat Dash</h3>
+  <p class="small">Jump over obstacles.</p>
+  <button onclick="startGame('dash')">PLAY</button>
+ </div>
+
+ <div class="gameCard">
+  <div class="gameIcon">🧩</div>
+  <h3>Maze Escape</h3>
+  <p class="small">Find your way out.</p>
+  <button onclick="startGame('maze')">PLAY</button>
+ </div>
+
+ <div class="gameCard">
+  <div class="gameIcon">🚀</div>
+  <h3>Space Blaster</h3>
+  <p class="small">Shoot and dodge.</p>
+  <button onclick="startGame('space')">PLAY</button>
+ </div>
+
+ <div class="gameCard">
+  <div class="gameIcon">🟦</div>
+  <h3>Pixel Jumper</h3>
+  <p class="small">Jump between platforms.</p>
+  <button onclick="startGame('jumper')">PLAY</button>
+ </div>
+
+ <div class="gameCard">
+  <div class="gameIcon">🏓</div>
+  <h3>Neon Pong</h3>
+  <p class="small">Beat the computer.</p>
+  <button onclick="startGame('pong')">PLAY</button>
+ </div>
+</div>
+
+<div id="aboutScreen" class="screen">
+ <div class="card">
+  <h2>ABOUT</h2>
+  <p>Shadowbat Arcade</p>
+  <p>Created by Shadowbat.</p>
+  <p>Five different arcade games in one website.</p>
+ </div>
+</div>
+
+<div id="gameScreen" class="screen">
+ <h2 id="gameTitle">GAME</h2>
+ <p id="instructions" class="small"></p>
+ <canvas id="canvas" width="600" height="350"></canvas>
+ <p id="gameMessage"></p>
+ <button onclick="restartGame()">RESTART</button>
+ <button onclick="home()">BACK TO MENU</button>
+</div>
+
+<script>
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+
+let currentGame="";
+let running=false;
+let raf=null;
+let lastTime=0;
+let state={};
+let keys={};
+
+function screen(id){
+ document.querySelectorAll(".screen").forEach(s=>s.style.display="none");
+ document.getElementById(id).style.display="block";
+}
+
+function stop(){
+ running=false;
+ if(raf!==null)cancelAnimationFrame(raf);
+ raf=null;
+}
+
+function home(){stop();screen("homeScreen");}
+function library(){stop();screen("libraryScreen");}
+function about(){stop();screen("aboutScreen");}
+
+function startGame(name){
+ currentGame=name;
+ screen("gameScreen");
+ restartGame();
+}
+
+function restartGame(){
+ stop();
+ keys={};
+ document.getElementById("gameMessage").textContent="";
+
+ const titles={
+  dash:"SHADOWBAT DASH",
+  maze:"MAZE ESCAPE",
+  space:"SPACE BLASTER",
+  jumper:"PIXEL JUMPER",
+  pong:"NEON PONG"
+ };
+
+ const instructions={
+  dash:"SPACE / UP / CLICK TO JUMP",
+  maze:"ARROW KEYS OR WASD TO MOVE",
+  space:"ARROW KEYS / WASD TO MOVE • SPACE TO SHOOT",
+  jumper:"ARROW KEYS / A D TO MOVE • SPACE TO JUMP",
+  pong:"W / S OR UP / DOWN TO MOVE YOUR PADDLE"
+ };
+
+ document.getElementById("gameTitle").textContent=titles[currentGame];
+ document.getElementById("instructions").textContent=instructions[currentGame];
+
+ if(currentGame==="dash")initDash();
+ if(currentGame==="maze")initMaze();
+ if(currentGame==="space")initSpace();
+ if(currentGame==="jumper")initJumper();
+ if(currentGame==="pong")initPong();
+
+ running=true;
+ lastTime=0;
+ raf=requestAnimationFrame(loop);
+}
+
+document.addEventListener("keydown",e=>{
+ keys[e.key.toLowerCase()]=true;
+ if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key))e.preventDefault();
+});
+
+document.addEventListener("keyup",e=>{
+ keys[e.key.toLowerCase()]=false;
+});
+
+canvas.addEventListener("pointerdown",()=>{
+ keys.click=true;
+});
+canvas.addEventListener("pointerup",()=>keys.click=false);
+canvas.addEventListener("pointerleave",()=>keys.click=false);
+
+function message(t){
+ document.getElementById("gameMessage").textContent=t;
+}
+
+function finish(t){
+ running=false;
+ message(t);
+}
+
+function loop(time){
+ if(!running)return;
+ let dt=lastTime?Math.min((time-lastTime)/16.67,2):1;
+ lastTime=time;
+
+ ctx.clearRect(0,0,600,350);
+
+ if(currentGame==="dash")updateDash(dt);
+ if(currentGame==="maze")updateMaze(dt);
+ if(currentGame==="space")updateSpace(dt);
+ if(currentGame==="jumper")updateJumper(dt);
+ if(currentGame==="pong")updatePong(dt);
+
+ if(running)raf=requestAnimationFrame(loop);
+}
+
+// --------------------------------------------------
+// GAME 1: SHADOWBAT DASH
+// --------------------------------------------------
+
+function initDash(){
+ state={
+  x:90,y:275,vy:0,ground:true,angle:0,
+  obstacles:[],distance:0,score:0,speed:5
+ };
+
+ for(let i=0;i<15;i++){
+  state.obstacles.push({
+   x:650+i*260,
+   type:i%4===1?"block":"spike"
+  });
+ }
+}
+
+function updateDash(dt){
+ let s=state;
+ s.distance+=s.speed*dt;
+
+ ctx.fillStyle="#161632";
+ ctx.fillRect(0,0,600,350);
+
+ for(let i=0;i<12;i++){
+  let x=(i*75-s.distance*.3)%650;
+  if(x<0)x+=650;
+  ctx.fillStyle="#30244b";
+  ctx.fillRect(x,50,3,200);
+ }
+
+ ctx.fillStyle="#34334f";
+ ctx.fillRect(0,305,600,45);
+
+ s.vy+=.65*dt;
+ s.y+=s.vy*dt;
+
+ if(s.y>=275){
+  s.y=275;s.vy=0;s.ground=true;
+ }else s.ground=false;
+
+ if((keys[" "]||keys.arrowup||keys.click)&&s.ground){
+  s.vy=-12;s.ground=false;
+ }
+
+ s.obstacles.forEach(o=>{
+  let x=o.x-s.distance;
+
+  if(o.type==="spike"){
+   ctx.fillStyle="#ff4979";
+   ctx.beginPath();
+   ctx.moveTo(x,305);
+   ctx.lineTo(x+20,270);
+   ctx.lineTo(x+40,305);
+   ctx.fill();
+
+   if(x<120&&x+40>85&&s.y+30>270){
+    finish("💥 CRASHED! Restart to try again.");
+   }
+  }else{
+   ctx.fillStyle="#a855f7";
+   ctx.fillRect(x,275,40,30);
+
+   if(x<120&&x+40>85&&s.y+30>275){
+    finish("💥 CRASHED! Restart to try again.");
+   }
+  }
+ });
+
+ s.angle=s.ground?Math.round(s.angle/(Math.PI/2))*(Math.PI/2):s.angle+.12*dt;
+
+ ctx.save();
+ ctx.translate(105,s.y+15);
+ ctx.rotate(s.angle);
+ ctx.fillStyle="#38bdf8";
+ ctx.fillRect(-15,-15,30,30);
+ ctx.fillStyle="#101027";
+ ctx.fillRect(-8,-7,5,5);
+ ctx.fillRect(4,-7,5,5);
+ ctx.restore();
+
+ ctx.fillStyle="white";
+ ctx.font="18px Arial";
+ ctx.fillText("Distance: "+Math.floor(s.distance),15,25);
+
+ if(s.distance>4000)finish("🏆 YOU COMPLETED SHADOWBAT DASH!");
+}
+
+// --------------------------------------------------
+// GAME 2: MAZE ESCAPE
+// --------------------------------------------------
+
+const mazeMap=[
+ "###############",
+ "#S....#.......#",
+ "###.#.#.#####.#",
+ "#...#...#.....#",
+ "#.#####.#.###.#",
+ "#.......#...#.#",
+ "#.#########.#.#",
+ "#...........#E",
+ "###############"
+];
+
+function initMaze(){
+ state={
+  map:mazeMap.map(r=>r.split("")),
+  x:1,y:1,moveCooldown:0
+ };
+}
+
+function updateMaze(dt){
+ let s=state;
+ let tile=35;
+ let ox=37,oy=17;
+
+ ctx.fillStyle="#080d22";
+ ctx.fillRect(0,0,600,350);
+
+ for(let y=0;y<s.map.length;y++){
+  for(let x=0;x<s.map[y].length;x++){
+   let c=s.map[y][x];
+   ctx.fillStyle=c==="#"?"#7044a8":c==="E"?"#22c55e":"#172b4d";
+   ctx.fillRect(ox+x*tile,oy+y*tile,tile-2,tile-2);
+  }
+ }
+
+ if(s.moveCooldown>0)s.moveCooldown-=dt;
+
+ if(s.moveCooldown<=0){
+  let dx=0,dy=0;
+  if(keys.arrowleft||keys.a)dx=-1;
+  else if(keys.arrowright||keys.d)dx=1;
+  else if(keys.arrowup||keys.w)dy=-1;
+  else if(keys.arrowdown||keys.s)dy=1;
+
+  let nx=s.x+dx,ny=s.y+dy;
+
+  if(dx||dy){
+   if(s.map[ny]?.[nx]&&s.map[ny][nx]!=="#"){
+    s.x=nx;s.y=ny;
+    if(s.map[ny][nx]==="E"){
+     finish("🏆 MAZE ESCAPED!");
+    }
+   }
+   s.moveCooldown=8;
+  }
+ }
+
+ ctx.fillStyle="#38bdf8";
+ ctx.beginPath();
+ ctx.arc(ox+s.x*tile+16,oy+s.y*tile+16,12,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.fillStyle="white";
+ ctx.font="15px Arial";
+ ctx.fillText("Find the green exit!",15,340);
+}
+
+// --------------------------------------------------
+// GAME 3: SPACE BLASTER
+// --------------------------------------------------
+
+function initSpace(){
+ state={
+  x:280,y:285,shots:[],enemies:[],
+  score:0,spawn:0,fire:0,stars:[]
+ };
+
+ for(let i=0;i<35;i++){
+  state.stars.push({x:Math.random()*600,y:Math.random()*350});
+ }
+}
+
+function updateSpace(dt){
+ let s=state;
+
+ ctx.fillStyle="#070b20";
+ ctx.fillRect(0,0,600,350);
+
+ s.stars.forEach(st=>{
+  st.y+=2*dt;
+  if(st.y>350){st.y=0;st.x=Math.random()*600;}
+  ctx.fillStyle="white";
+  ctx.fillRect(st.x,st.y,2,2);
+ });
+
+ if(keys.arrowleft||keys.a)s.x-=5*dt;
+ if(keys.arrowright||keys.d)s.x+=5*dt;
+ if(keys.arrowup||keys.w)s.y-=5*dt;
+ if(keys.arrowdown||keys.s)s.y+=5*dt;
+
+ s.x=Math.max(15,Math.min(585,s.x));
+ s.y=Math.max(40,Math.min(330,s.y));
+
+ s.fire-=dt;
+ if((keys[" "]||keys.click)&&s.fire<=0){
+  s.shots.push({x:s.x,y:s.y-15});
+  s.fire=10;
+ }
+
+ s.spawn-=dt;
+ if(s.spawn<=0){
+  s.enemies.push({
+   x:25+Math.random()*550,y:-25,
+   vx:(Math.random()-.5)*1.5
+  });
+  s.spawn=38;
+ }
+
+ s.shots.forEach(b=>{
+  b.y-=8*dt;
+  ctx.fillStyle="#38bdf8";
+  ctx.fillRect(b.x-3,b.y,6,13);
+ });
+
+ s.enemies.forEach(e=>{
+  e.y+=2.5*dt;
+  e.x+=e.vx*dt;
+
+  ctx.fillStyle="#fb7185";
+  ctx.beginPath();
+  ctx.arc(e.x,e.y,14,0,Math.PI*2);
+  ctx.fill();
+
+  if(Math.hypot(e.x-s.x,e.y-s.y)<23){
+   finish("💥 Your ship was hit! Score: "+s.score);
+  }
+
+  s.shots.forEach(b=>{
+   if(!e.dead&&Math.hypot(e.x-b.x,e.y-b.y)<17){
+    e.dead=true;
+    b.dead=true;
+    s.score++;
+   }
+  });
+ });
+
+ s.enemies=s.enemies.filter(e=>!e.dead&&e.y<380);
+ s.shots=s.shots.filter(b=>!b.dead&&b.y>0);
+
+ // Ship
+ ctx.fillStyle="#38bdf8";
+ ctx.beginPath();
+ ctx.moveTo(s.x,s.y-17);
+ ctx.lineTo(s.x-15,s.y+15);
+ ctx.lineTo(s.x,s.y+8);
+ ctx.lineTo(s.x+15,s.y+15);
+ ctx.closePath();
+ ctx.fill();
+
+ ctx.fillStyle="white";
+ ctx.font="18px Arial";
+ ctx.fillText("Score: "+s.score,15,25);
+}
+
+// --------------------------------------------------
+// GAME 4: PIXEL JUMPER
+// --------------------------------------------------
+
+function initJumper(){
+ state={
+  x:90,y:260,vy:0,vx:0,
+  ground:false,platforms:[],
+  camera:0,score:0
+ };
+
+ for(let i=0;i<18;i++){
+  state.platforms.push({
+   x:i*145+30,
+   y:285-(i%3)*48,
+   w:100
+  });
+ }
+ state.platforms.unshift({x:0,y:310,w:170});
+}
+
+function updateJumper(dt){
+ let s=state;
+
+ ctx.fillStyle="#101b37";
+ ctx.fillRect(0,0,600,350);
+
+ if(keys.arrowleft||keys.a)s.vx=-4;
+ else if(keys.arrowright||keys.d)s.vx=4;
+ else s.vx*=.8;
+
+ s.x+=s.vx*dt;
+
+ if((keys[" "]||keys.arrowup||keys.w||keys.click)&&s.ground){
+  s.vy=-12;
+  s.ground=false;
+ }
+
+ let oldBottom=s.y+25;
+ s.vy+=.55*dt;
+ s.y+=s.vy*dt;
+
+ s.ground=false;
+
+ for(let p of s.platforms){
+  let px=p.x-s.camera;
+  ctx.fillStyle="#a855f7";
+  ctx.fillRect(px,p.y,p.w,12);
+
+  if(s.x+25>px&&s.x<px+p.w&&
+     s.vy>=0&&oldBottom<=p.y&&s.y+25>=p.y){
+   s.y=p.y-25;
+   s.vy=0;
+   s.ground=true;
+  }
+ }
+
+ s.camera+=2.3*dt;
+
+ if(s.y>370){
+  finish("💥 You fell! Restart to try again.");
+ }
+
+ if(s.x<0)s.x=0;
+ if(s.x>580)s.x=580;
+
+ ctx.fillStyle="#38bdf8";
+ ctx.fillRect(s.x-s.camera+150,s.y,25,25);
+
+ // Keep player near screen center while camera moves
+ if(s.x-s.camera+150<50)s.x=s.camera-100;
+ if(s.x-s.camera+150>550)s.x=s.camera+400;
+
+ ctx.fillStyle="white";
+ ctx.font="18px Arial";
+ ctx.fillText("Keep climbing!",15,25);
+
+ if(s.camera>2200)finish("🏆 PIXEL JUMPER COMPLETE!");
+}
+
+// --------------------------------------------------
+// GAME 5: NEON PONG
+// --------------------------------------------------
+
+function initPong(){
+ state={
+  py:140,cy:140,
+  x:300,y:175,
+  vx:4,vy:3,
+  playerScore:0,computerScore:0
+ };
+}
+
+function updatePong(dt){
+ let s=state;
+
+ ctx.fillStyle="#080d22";
+ ctx.fillRect(0,0,600,350);
+
+ ctx.strokeStyle="#554477";
+ ctx.setLineDash([10,10]);
+ ctx.beginPath();
+ ctx.moveTo(300,0);
+ ctx.lineTo(300,350);
+ ctx.stroke();
+ ctx.setLineDash([]);
+
+ if(keys.w||keys.arrowup)s.py-=6*dt;
+ if(keys.s||keys.arrowdown)s.py+=6*dt;
+
+ s.py=Math.max(0,Math.min(280,s.py));
+
+ // Computer follows the ball
+ if(s.cy+35<s.y-5)s.cy+=3.3*dt;
+ if(s.cy+35>s.y+5)s.cy-=3.3*dt;
+ s.cy=Math.max(0,Math.min(280,s.cy));
+
+ s.x+=s.vx*dt;
+ s.y+=s.vy*dt;
+
+ if(s.y<8||s.y>342)s.vy*=-1;
+
+ // Player paddle
+ if(s.vx<0&&s.x<35&&s.x>20&&s.y>s.py-5&&s.y<s.py+75){
+  s.vx=Math.abs(s.vx)*1.05;
+  s.vy+=(s.y-(s.py+37))*0.09;
+ }
+
+ // Computer paddle
+ if(s.vx>0&&s.x>565&&s.x<580&&s.y>s.cy-5&&s.y<s.cy+75){
+  s.vx=-Math.abs(s.vx)*1.04;
+  s.vy+=(s.y-(s.cy+37))*0.08;
+ }
+
+ if(s.x<0){
+  s.computerScore++;
+  resetBall();
+ }
+
+ if(s.x>600){
+  s.playerScore++;
+  resetBall();
+ }
+
+ ctx.fillStyle="#38bdf8";
+ ctx.shadowColor="#38bdf8";
+ ctx.shadowBlur=12;
+ ctx.fillRect(15,s.py,12,70);
+
+ ctx.fillStyle="#fb7185";
+ ctx.fillRect(573,s.cy,12,70);
+
+ ctx.fillStyle="white";
+ ctx.beginPath();
+ ctx.arc(s.x,s.y,9,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.shadowBlur=0;
+ ctx.font="30px Arial";
+ ctx.fillText(s.playerScore,240,40);
+ ctx.fillText(s.computerScore,340,40);
+
+ if(s.playerScore>=5)finish("🏆 YOU BEAT THE COMPUTER!");
+ if(s.computerScore>=5)finish("THE COMPUTER WON! TRY AGAIN.");
+}
+
+function resetBall(){
+ let s=state;
+ s.x=300;s.y=175;
+ s.vx=s.vx>0?-4:4;
+ s.vy=(Math.random()-.5)*5;
+}
+</script>
+</body>
+</html>
